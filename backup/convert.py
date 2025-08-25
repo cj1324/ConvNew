@@ -80,7 +80,7 @@ elif display_mode == 'cut':
 
 # Create a palette object
 pal_image = Image.new("P", (1,1))
-pal_image.putpalette( (0,0,0,  255,255,255,  0,255,0,   0,0,255,  255,0,0,  255,255,0, 255,128,0) + (0,0,0)*249)
+pal_image.putpalette( (0,0,0,  255,255,255,  255,255,0,  255,0,0,  0,0,0,  0,0,255,  0,255,0) + (0,0,0)*249)
   
 # The color quantization and dithering algorithms are performed, and the results are converted to RGB mode
 quantized_image = resized_image.quantize(dither=display_dither, palette=pal_image).convert('RGB')

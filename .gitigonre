@@ -1,5 +1,6 @@
 *.exe
 dist
 build
+.venv
 
 

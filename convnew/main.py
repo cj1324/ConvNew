@@ -10,21 +10,37 @@ import argparse
 import warnings
 warnings.filterwarnings('ignore')
 
-# E Ink E6 标准6色定义
-E6_COLORS = np.array([
+# E Ink E6 标准6色定义 (包含一个跳过位置)
+E6_COLORS_WITH_SKIP = np.array([
     [0, 0, 0],        # 黑色
     [255, 255, 255],  # 白色  
-    [255, 243, 56],   # 黄色
-    [191, 0, 0],      # 红色
-    [100, 64, 255],   # 蓝色
-    [67, 138, 28]     # 绿色
+    [255, 255, 0],   # 黄色
+    [255, 0, 0],      # 红色
+    [0, 0, 0],        # 跳过定义 (占位)
+    [0, 0, 255],      # 蓝色
+    [0, 255, 0]       # 绿色
+], dtype=np.float32)
+
+# 实际使用的6色 (排除跳过的位置)
+E6_COLORS = np.array([
+    E6_COLORS_WITH_SKIP[0],  # 黑色
+    E6_COLORS_WITH_SKIP[1],  # 白色
+    E6_COLORS_WITH_SKIP[2],  # 黄色
+    E6_COLORS_WITH_SKIP[3],  # 红色
+    E6_COLORS_WITH_SKIP[5],  # 蓝色 (跳过索引4)
+    E6_COLORS_WITH_SKIP[6]   # 绿色
 ], dtype=np.float32)
 
 def create_e6_palette():
-    """创建E6专用调色板"""
+    """创建E6专用调色板 (处理跳过的颜色索引)"""
     palette = []
-    for color in E6_COLORS.astype(np.uint8):
-        palette.extend(color.tolist())
+    # 使用包含跳过位置的完整数组来创建调色板
+    for i, color in enumerate(E6_COLORS_WITH_SKIP.astype(np.uint8)):
+        if i == 4:  # 跳过索引4
+            # 为跳过的位置填充黑色（或任意颜色，因为不会被使用）
+            palette.extend([0, 0, 0])
+        else:
+            palette.extend(color.tolist())
     while len(palette) < 768:
         palette.extend([0, 0, 0])
     return palette

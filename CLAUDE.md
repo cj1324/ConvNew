@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an image conversion tool for E Ink Spectra 6 7-color displays. The project converts regular images into a 7-color palette (black, white, red, yellow, blue, green, orange) optimized for e-ink displays with 800x480 or 480x800 resolution.
+This is an image conversion tool for E Ink E6 6-color displays. The project converts regular images into a 6-color palette (black, white, yellow, red, blue, green) optimized for e-ink displays with 800x480 or 480x800 resolution.
 
 ## Project Structure
 
@@ -30,7 +30,7 @@ ConvNew/
 Advanced converter with:
 - Multiple dithering algorithms (Floyd-Steinberg, Ordered, None)
 - Image preprocessing with presets (photo, art, text, logo)
-- Color optimization for 7-color e-ink displays
+- Color optimization for 6-color e-ink displays
 - Automatic orientation detection and scaling
 
 ### Legacy Module (backup/convert.py)
@@ -48,7 +48,7 @@ Basic converter with simple palette quantization (kept for reference/compatibili
 2. **Resizing**: Supports landscape (800x480) and portrait (480x800) modes
 3. **Preprocessing**: Applies enhancements based on content type
 4. **Color Optimization**: Enhances pure color tendencies
-5. **Quantization**: Maps to Spectra 6 palette using selected method
+5. **Quantization**: Maps to E6 palette using selected method
 6. **Output**: Saves as BMP for e-ink and PNG for preview
 
 ## Development Commands
@@ -93,18 +93,17 @@ cd backup
 converterTo7color_all.cmd
 ```
 
-## Spectra 6 Color Palette
+## E6 Color Palette
 
-The standard 7-color e-ink palette is defined as:
+The standard 6-color e-ink palette is defined as:
 ```python
-SPECTRA6_COLORS = np.array([
+E6_COLORS = np.array([
     [0, 0, 0],       # Black
     [255, 255, 255], # White
-    [255, 0, 0],     # Red
-    [255, 255, 0],   # Yellow
-    [0, 0, 255],     # Blue
-    [0, 255, 0],     # Green
-    [255, 128, 0]    # Orange
+    [255, 243, 56],  # Yellow
+    [191, 0, 0],     # Red
+    [100, 64, 255],  # Blue
+    [67, 138, 28]    # Green
 ], dtype=np.uint8)
 ```
 
@@ -149,13 +148,13 @@ for method in floyd ordered none; do
     python -m convnew.main test_image.jpg --method $method
 done
 
-# Output files: *_spectra6.bmp and *_preview.png
+# Output files: *_e6.bmp and *_preview.png
 ```
 
 ### Expected Output
-- `*_spectra6.bmp`: 7-color BMP for e-ink display
+- `*_e6.bmp`: 6-color BMP for e-ink display
 - `*_preview.png`: PNG preview for verification
-- Files should contain only the 7 Spectra 6 colors
+- Files should contain only the 6 E6 colors
 - Aspect ratio should be maintained or adapted to display dimensions
 
 ## Dependencies
@@ -176,7 +175,7 @@ Core dependencies (from pyproject.toml):
 
 ### File Naming Convention
 - Input: `image.jpg`
-- Output: `image_spectra6.bmp` (e-ink format)
+- Output: `image_e6.bmp` (e-ink format)
 - Preview: `image_preview.png` (optional preview)
 
 ### Aspect Ratio Handling
@@ -208,5 +207,5 @@ Common issues and solutions:
 - Always test changes with various image types
 - Maintain backward compatibility with legacy convert.py if possible
 - Document any new parameters or features
-- Keep output format compatible with Spectra 6 displays
-- Preserve the 7-color limitation strictly
+- Keep output format compatible with E6 displays
+- Preserve the 6-color limitation strictly

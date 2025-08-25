@@ -1,10 +1,10 @@
-# Image Converter for E-Ink Spectra 6 Display
+# Image Converter for E-Ink E6 Display
 
-A specialized image conversion tool designed for 7-color e-ink displays (Spectra 6), converting regular images into a limited color palette optimized for e-paper screens.
+A specialized image conversion tool designed for 6-color e-ink displays (E6), converting regular images into a limited color palette optimized for e-paper screens.
 
 ## Features
 
-- **7-Color Palette Conversion**: Converts images to the Spectra 6 palette (Black, White, Red, Yellow, Blue, Green, Orange)
+- **6-Color Palette Conversion**: Converts images to the E6 palette (Black, White, Yellow, Red, Blue, Green)
 - **Multiple Dithering Algorithms**: Floyd-Steinberg, Ordered (Bayer), and None
 - **Content-Aware Presets**: Optimized settings for photos, artwork, text, and logos
 - **Flexible Display Modes**: Support for both 800x480 (landscape) and 480x800 (portrait) resolutions
@@ -89,7 +89,7 @@ Direct color quantization without dithering. Best for images with solid colors o
 ## Output Files
 
 The converter generates two files:
-- `*_spectra6.bmp`: 7-color BMP file ready for e-ink display
+- `*_e6.bmp`: 6-color BMP file ready for e-ink display
 - `*_preview.png`: PNG preview for verification on regular screens
 
 ## Building Executable (Windows)
@@ -128,17 +128,16 @@ ConvNew/
 
 ## Color Palette
 
-The Spectra 6 e-ink display supports exactly 7 colors:
+The E6 e-ink display supports exactly 6 colors:
 
 | Color | RGB Values | Hex |
 |-------|------------|-----|
 | Black | (0, 0, 0) | #000000 |
 | White | (255, 255, 255) | #FFFFFF |
-| Red | (255, 0, 0) | #FF0000 |
-| Yellow | (255, 255, 0) | #FFFF00 |
-| Blue | (0, 0, 255) | #0000FF |
-| Green | (0, 255, 0) | #00FF00 |
-| Orange | (255, 128, 0) | #FF8000 |
+| Yellow | (255, 243, 56) | #FFF338 |
+| Red | (191, 0, 0) | #BF0000 |
+| Blue | (100, 64, 255) | #6440FF |
+| Green | (67, 138, 28) | #438A1C |
 
 ## Examples
 
@@ -225,7 +224,7 @@ This project is open source and available under the MIT License.
 
 ## Acknowledgments
 
-- Designed specifically for Spectra 6 7-color e-ink displays
+- Designed specifically for E6 6-color e-ink displays
 - Floyd-Steinberg dithering algorithm by Robert W. Floyd and Louis Steinberg
 - Bayer ordered dithering matrix by Bryce Bayer
 

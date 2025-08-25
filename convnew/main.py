@@ -10,21 +10,20 @@ import argparse
 import warnings
 warnings.filterwarnings('ignore')
 
-# E Ink Spectra 6 标准7色定义
-SPECTRA6_COLORS = np.array([
+# E Ink E6 标准6色定义
+E6_COLORS = np.array([
     [0, 0, 0],        # 黑色
     [255, 255, 255],  # 白色  
-    [255, 0, 0],      # 红色
-    [255, 255, 0],    # 黄色
-    [0, 0, 255],      # 蓝色
-    [0, 255, 0],      # 绿色
-    [255, 128, 0]     # 橙色
+    [255, 243, 56],   # 黄色
+    [191, 0, 0],      # 红色
+    [100, 64, 255],   # 蓝色
+    [67, 138, 28]     # 绿色
 ], dtype=np.float32)
 
-def create_spectra6_palette():
-    """创建Spectra 6专用调色板"""
+def create_e6_palette():
+    """创建E6专用调色板"""
     palette = []
-    for color in SPECTRA6_COLORS.astype(np.uint8):
+    for color in E6_COLORS.astype(np.uint8):
         palette.extend(color.tolist())
     while len(palette) < 768:
         palette.extend([0, 0, 0])
@@ -158,7 +157,7 @@ def preprocess_image(img, config):
     return img
 
 def optimize_colors(img_array):
-    """优化颜色以适应7色显示"""
+    """优化颜色以适应6色显示"""
     result = img_array.copy().astype(np.float32)
     
     # 增强主色调
@@ -185,16 +184,12 @@ def optimize_colors(img_array):
                     r *= 0.9
                     g *= 0.9
             
-            # 特别优化黄色和橙色
-            if r > 180 and g > 150 and b < 100:
-                if g > 200:  # 偏黄
-                    r = min(255, r * 1.1)
-                    g = min(255, g * 1.1)
-                    b *= 0.7
-                else:  # 偏橙
-                    r = min(255, r * 1.1)
-                    g *= 0.95
-                    b *= 0.7
+            # 特别优化黄色
+            if r > 180 and g > 180 and b < 100:
+                # 增强黄色倾向
+                r = min(255, r * 1.1)
+                g = min(255, g * 1.05)
+                b = max(50, b * 0.9)  # 保持黄色特征
             
             result[y, x] = [r, g, b]
     
@@ -287,24 +282,24 @@ def process_single_image(input_file, args, config):
         print(f'应用{args.method}量化...')
         
         if args.method == 'floyd':
-            quantized = floyd_steinberg_dither(img_array, SPECTRA6_COLORS)
+            quantized = floyd_steinberg_dither(img_array, E6_COLORS)
         elif args.method == 'ordered':
-            quantized = ordered_dither(img_array, SPECTRA6_COLORS)
+            quantized = ordered_dither(img_array, E6_COLORS)
         else:  # none
-            quantized = simple_quantize(img_array, SPECTRA6_COLORS)
+            quantized = simple_quantize(img_array, E6_COLORS)
         
         # 转换回PIL图像（确保RGB模式）
         result_img = Image.fromarray(quantized, mode='RGB')
         
         # 创建调色板图像
         pal_img = Image.new('P', (1, 1))
-        pal_img.putpalette(create_spectra6_palette())
+        pal_img.putpalette(create_e6_palette())
         
-        # 量化到7色调色板
+        # 量化到6色调色板
         final_img = result_img.convert('RGB').quantize(palette=pal_img).convert('RGB')
         
         # 保存BMP文件
-        output_file = os.path.splitext(input_file)[0] + f'_spectra6.bmp'
+        output_file = os.path.splitext(input_file)[0] + f'_e6.bmp'
         final_img.save(output_file, 'BMP')
         
         # 保存RGB预览
@@ -324,7 +319,7 @@ def process_single_image(input_file, args, config):
 
 # 参数解析
 parser = argparse.ArgumentParser(
-    description='E Ink Spectra 6 七色墨水屏图像转换工具',
+    description='E Ink E6 六色墨水屏图像转换工具',
     formatter_class=argparse.RawDescriptionHelpFormatter,
     epilog='''
 使用示例:

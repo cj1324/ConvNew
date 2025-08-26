@@ -48,7 +48,10 @@ def create_e6_palette():
 def find_nearest_color(pixel, colors):
     """找到最近的颜色"""
     distances = np.sum((colors - pixel) ** 2, axis=1)
-    return colors[np.argmin(distances)]
+    nearest = colors[np.argmin(distances)]
+    # 确保返回纯色值（0或255），固件要求严格匹配
+    nearest = np.where(nearest > 127, 255, 0)
+    return nearest
 
 def floyd_steinberg_dither(img_array, colors):
     """Floyd-Steinberg抖动算法（稳定版）"""
@@ -128,6 +131,79 @@ def simple_quantize(img_array, colors):
     
     return result
 
+def force_pure_colors(img_array):
+    """强制输出为纯色值（0或255），确保固件兼容性"""
+    result = img_array.copy()
+    # 将所有通道值量化为0或255
+    result = np.where(result < 128, 0, 255)
+    return result.astype(np.uint8)
+
+def validate_and_fix_e6_colors(img_array):
+    """验证并修正所有像素为有效的E6颜色"""
+    valid_colors = np.array([
+        [0, 0, 0],       # 黑色
+        [255, 255, 255], # 白色
+        [255, 255, 0],   # 黄色
+        [255, 0, 0],     # 红色
+        [0, 0, 255],     # 蓝色
+        [0, 255, 0]      # 绿色
+    ], dtype=np.uint8)
+    
+    height, width = img_array.shape[:2]
+    result = img_array.copy()
+    
+    for y in range(height):
+        for x in range(width):
+            pixel = result[y, x]
+            # 检查是否是有效的E6颜色
+            is_valid = False
+            for valid_color in valid_colors:
+                if np.array_equal(pixel, valid_color):
+                    is_valid = True
+                    break
+            
+            if not is_valid:
+                # 找最近的有效E6颜色
+                result[y, x] = find_nearest_color(pixel, valid_colors.astype(np.float32))
+    
+    return result
+
+def test_firmware_compatibility(bmp_path):
+    """测试BMP文件是否与固件完全兼容"""
+    try:
+        img = Image.open(bmp_path)
+        pixels = np.array(img)
+        
+        incompatible_pixels = []
+        total_pixels = pixels.shape[0] * pixels.shape[1]
+        
+        for y in range(pixels.shape[0]):
+            for x in range(pixels.shape[1]):
+                r, g, b = pixels[y, x]
+                # 模拟固件的精确匹配逻辑（参考GUI_BMPfile.c）
+                if not ((r==0 and g==0 and b==0) or          # 黑色
+                       (r==255 and g==255 and b==255) or      # 白色
+                       (r==255 and g==255 and b==0) or        # 黄色
+                       (r==255 and g==0 and b==0) or          # 红色
+                       (r==0 and g==0 and b==255) or          # 蓝色
+                       (r==0 and g==255 and b==0)):           # 绿色
+                    incompatible_pixels.append((x, y, r, g, b))
+        
+        is_compatible = len(incompatible_pixels) == 0
+        
+        if is_compatible:
+            print(f'✓ 固件兼容性测试通过: 所有{total_pixels}个像素都是有效的E6颜色')
+        else:
+            print(f'✗ 固件兼容性测试失败: 发现{len(incompatible_pixels)}个不兼容像素')
+            if len(incompatible_pixels) <= 10:
+                for x, y, r, g, b in incompatible_pixels[:10]:
+                    print(f'  位置({x},{y}): RGB({r},{g},{b})')
+        
+        return is_compatible, incompatible_pixels
+    except Exception as e:
+        print(f'测试失败: {e}')
+        return False, []
+
 def preprocess_image(img, config):
     """预处理图像（使用PIL）"""
     # 确保是RGB模式
@@ -173,7 +249,7 @@ def preprocess_image(img, config):
     return img
 
 def optimize_colors(img_array):
-    """优化颜色以适应6色显示"""
+    """优化颜色以适应6色显示，增强固件兼容性"""
     result = img_array.copy().astype(np.float32)
     
     # 增强主色调
@@ -188,24 +264,37 @@ def optimize_colors(img_array):
             if max_val - min_val > 80:  # 有明显主色
                 # 增强主色，减弱其他色
                 if r == max_val:
-                    r = min(255, r * 1.15)
-                    g *= 0.9
-                    b *= 0.9
+                    r = min(255, r * 1.2)  # 更强的增强
+                    g *= 0.85
+                    b *= 0.85
                 elif g == max_val:
-                    g = min(255, g * 1.15)
-                    r *= 0.9
-                    b *= 0.9
+                    g = min(255, g * 1.2)
+                    r *= 0.85
+                    b *= 0.85
                 elif b == max_val:
-                    b = min(255, b * 1.15)
-                    r *= 0.9
-                    g *= 0.9
+                    b = min(255, b * 1.2)
+                    r *= 0.85
+                    g *= 0.85
             
-            # 特别优化黄色
-            if r > 180 and g > 180 and b < 100:
-                # 增强黄色倾向
-                r = min(255, r * 1.1)
-                g = min(255, g * 1.05)
-                b = max(50, b * 0.9)  # 保持黄色特征
+            # 特别优化黄色（固件期望R=255,G=255,B=0）
+            if r > 200 and g > 200 and b < 50:  # 更严格的黄色检测
+                # 强制为纯黄色
+                r = 255
+                g = 255
+                b = 0
+            # 优化接近纯色的像素
+            elif r > 200 and g < 100 and b < 100:  # 偏红
+                r = 255
+                g = 0
+                b = 0
+            elif r < 100 and g > 200 and b < 100:  # 偏绿
+                r = 0
+                g = 255
+                b = 0
+            elif r < 100 and g < 100 and b > 200:  # 偏蓝
+                r = 0
+                g = 0
+                b = 255
             
             result[y, x] = [r, g, b]
     
@@ -304,6 +393,17 @@ def process_single_image(input_file, args, config):
         else:  # none
             quantized = simple_quantize(img_array, E6_COLORS)
         
+        # 如果启用严格模式或者总是强制纯色化（推荐）
+        if args.strict or True:  # 默认总是启用以确保固件兼容
+            # 强制纯色化，确保固件兼容性
+            quantized = force_pure_colors(quantized)
+            
+            # 验证E6颜色
+            quantized = validate_and_fix_e6_colors(quantized)
+            
+            if args.strict:
+                print('  已应用严格固件兼容模式')
+        
         # 转换回PIL图像（确保RGB模式）
         result_img = Image.fromarray(quantized, mode='RGB')
         
@@ -314,9 +414,9 @@ def process_single_image(input_file, args, config):
         # 量化到6色调色板
         final_img = result_img.convert('RGB').quantize(palette=pal_img).convert('RGB')
         
-        # 保存BMP文件
+        # 保存BMP文件（24位格式，固件要求）
         output_file = os.path.splitext(input_file)[0] + f'_e6.bmp'
-        final_img.save(output_file, 'BMP')
+        final_img.save(output_file, 'BMP')  # PIL会自动使用24位BMP格式
         
         # 保存RGB预览
         preview_file = os.path.splitext(input_file)[0] + f'_preview.png'
@@ -327,6 +427,11 @@ def process_single_image(input_file, args, config):
         print(f'✓ 转换完成: {output_file}')
         print(f'  预览文件: {preview_file}')
         print(f'  最终尺寸: {target_w}x{target_h}')
+        
+        # 自动运行固件兼容性测试
+        print('\n运行固件兼容性测试...')
+        test_firmware_compatibility(output_file)
+        
         return True
         
     except Exception as e:
@@ -364,6 +469,10 @@ parser.add_argument('--contrast', type=float, default=None,
                    help='对比度系数 (1.0-2.0)')
 parser.add_argument('--brightness', type=float, default=None, 
                    help='亮度系数 (0.8-1.2)')
+parser.add_argument('--strict', action='store_true',
+                   help='严格固件兼容模式（强制纯色输出）')
+parser.add_argument('--test-only', action='store_true',
+                   help='仅测试现有BMP文件的固件兼容性')
 
 args = parser.parse_args()
 
@@ -371,6 +480,16 @@ args = parser.parse_args()
 if not os.path.exists(args.input_path):
     print(f'错误：路径 {args.input_path} 不存在')
     sys.exit(1)
+
+# 如果是仅测试模式
+if args.test_only:
+    if args.input_path.lower().endswith('.bmp'):
+        print(f'测试BMP文件的固件兼容性: {args.input_path}')
+        is_compatible, _ = test_firmware_compatibility(args.input_path)
+        sys.exit(0 if is_compatible else 1)
+    else:
+        print('错误：--test-only 参数需要一个BMP文件路径')
+        sys.exit(1)
 
 # 预设配置
 presets = {

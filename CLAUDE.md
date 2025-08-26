@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an image conversion tool for E Ink E6 6-color displays. The project converts regular images into a 6-color palette (black, white, yellow, red, blue, green) optimized for e-ink displays with 800x480 or 480x800 resolution.
 
+**Hardware Reference:** 
+- GitHub Repository: https://github.com/waveshareteam/PhotoPainter_B
+- Product Wiki: https://www.waveshare.net/wiki/PhotoPainter_(B)
+
 ## Project Structure
 
 ```
@@ -100,12 +104,14 @@ The standard 6-color e-ink palette is defined as:
 E6_COLORS = np.array([
     [0, 0, 0],       # Black
     [255, 255, 255], # White
-    [255, 243, 56],  # Yellow
-    [191, 0, 0],     # Red
-    [100, 64, 255],  # Blue
-    [67, 138, 28]    # Green
-], dtype=np.uint8)
+    [255, 255, 0],   # Yellow
+    [255, 0, 0],     # Red
+    [0, 0, 255],     # Blue
+    [0, 255, 0]      # Green
+], dtype=np.float32)
 ```
+
+Note: The implementation uses a special array with a skipped index at position 4, but the actual colors used are the pure RGB values listed above.
 
 ## Preset Configurations
 

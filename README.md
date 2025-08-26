@@ -2,6 +2,10 @@
 
 A specialized image conversion tool designed for 6-color e-ink displays (E6), converting regular images into a limited color palette optimized for e-paper screens.
 
+**Hardware Compatibility:** This tool is designed for use with the Waveshare PhotoPainter e-ink display hardware.
+- [GitHub Repository](https://github.com/waveshareteam/PhotoPainter_B)
+- [Product Wiki](https://www.waveshare.net/wiki/PhotoPainter_(B))
+
 ## Features
 
 - **6-Color Palette Conversion**: Converts images to the E6 palette (Black, White, Yellow, Red, Blue, Green)
@@ -134,10 +138,10 @@ The E6 e-ink display supports exactly 6 colors:
 |-------|------------|-----|
 | Black | (0, 0, 0) | #000000 |
 | White | (255, 255, 255) | #FFFFFF |
-| Yellow | (255, 243, 56) | #FFF338 |
-| Red | (191, 0, 0) | #BF0000 |
-| Blue | (100, 64, 255) | #6440FF |
-| Green | (67, 138, 28) | #438A1C |
+| Yellow | (255, 255, 0) | #FFFF00 |
+| Red | (255, 0, 0) | #FF0000 |
+| Blue | (0, 0, 255) | #0000FF |
+| Green | (0, 255, 0) | #00FF00 |
 
 ## Examples
 

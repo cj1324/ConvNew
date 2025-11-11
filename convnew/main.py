@@ -20,6 +20,18 @@ E6_COLORS = np.array([
     [0, 255, 0]       # 绿色
 ], dtype=np.float32)
 
+# 7色（E7/7C）固件颜色定义：黑、白、黄、红、蓝、绿、橙
+# 与 backup/GUI_BMPfile_7c.c 的判断保持一致（RGB: Orange = 255,128,0）
+E7_COLORS = np.array([
+    [0, 0, 0],        # 黑色
+    [255, 255, 255],  # 白色
+    [255, 255, 0],    # 黄色
+    [255, 0, 0],      # 红色
+    [0, 0, 255],      # 蓝色
+    [0, 255, 0],      # 绿色
+    [255, 128, 0],    # 橙色
+], dtype=np.float32)
+
 # 为了兼容性保留带跳过的版本
 E6_COLORS_WITH_SKIP = np.array([
     E6_COLORS[0],     # 黑色
@@ -41,14 +53,24 @@ def create_e6_palette():
         palette.extend([0, 0, 0])
     return palette
 
-def find_nearest_color(pixel, colors=E6_COLORS):
-    """找到最近的E6颜色"""
+def create_e7_palette():
+    """创建E7专用调色板（7色，无跳过位）"""
+    palette = []
+    for color in E7_COLORS.astype(np.uint8):
+        palette.extend(color.tolist())
+    # 填充到256色
+    while len(palette) < 768:
+        palette.extend([0, 0, 0])
+    return palette
+
+def find_nearest_color(pixel, colors):
+    """找到最近的目标调色板颜色"""
     pixel = np.asarray(pixel, dtype=np.float32)
     distances = np.sum((colors - pixel) ** 2, axis=1)
     return colors[np.argmin(distances)].astype(np.uint8)
 
-def floyd_steinberg_dither(img_array):
-    """Floyd-Steinberg抖动算法"""
+def floyd_steinberg_dither(img_array, colors):
+    """Floyd-Steinberg抖动算法（针对目标调色板）"""
     height, width = img_array.shape[:2]
     img_float = img_array.astype(np.float64).copy()
     
@@ -58,7 +80,7 @@ def floyd_steinberg_dither(img_array):
     for y in range(height):
         for x in range(width):
             old_pixel = np.clip(img_float[y, x], 0, 255)
-            new_pixel = find_nearest_color(old_pixel)
+            new_pixel = find_nearest_color(old_pixel, colors)
             img_float[y, x] = new_pixel
             
             error = old_pixel - new_pixel
@@ -71,8 +93,8 @@ def floyd_steinberg_dither(img_array):
     
     return img_float.astype(np.uint8)
 
-def ordered_dither(img_array):
-    """有序抖动（Bayer矩阵）"""
+def ordered_dither(img_array, colors):
+    """有序抖动（Bayer矩阵）针对目标调色板"""
     height, width = img_array.shape[:2]
     
     # 4x4 Bayer矩阵
@@ -85,27 +107,27 @@ def ordered_dither(img_array):
     # 向量化量化
     result = dithered.reshape(-1, 3)
     for i in range(result.shape[0]):
-        result[i] = find_nearest_color(result[i])
+        result[i] = find_nearest_color(result[i], colors)
     
     return result.reshape(height, width, 3).astype(np.uint8)
 
-def simple_quantize(img_array):
-    """简单量化（无抖动）"""
+def simple_quantize(img_array, colors):
+    """简单量化（无抖动）针对目标调色板"""
     # 向量化处理
     shape = img_array.shape
     result = img_array.reshape(-1, 3)
     for i in range(result.shape[0]):
-        result[i] = find_nearest_color(result[i])
+        result[i] = find_nearest_color(result[i], colors)
     return result.reshape(shape).astype(np.uint8)
 
-def validate_e6_colors(img_array):
-    """验证并修正所有像素为有效的E6颜色"""
+def validate_colors(img_array, colors):
+    """验证并修正所有像素为目标调色板中的有效颜色"""
     height, width = img_array.shape[:2]
     result = img_array.reshape(-1, 3)
     
     # 向量化处理，更高效
     for i in range(result.shape[0]):
-        result[i] = find_nearest_color(result[i])
+        result[i] = find_nearest_color(result[i], colors)
     
     return result.reshape(height, width, 3)
 
@@ -143,8 +165,8 @@ def resize_image(img, target_w, target_h, mode):
         # 拉伸到目标尺寸
         return img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
-def test_firmware_compatibility(bmp_path):
-    """测试BMP文件是否与固件完全兼容"""
+def test_firmware_compatibility(bmp_path, colors=E6_COLORS):
+    """测试BMP文件是否与固件完全兼容（基于给定调色板）"""
     try:
         img = Image.open(bmp_path)
         pixels = np.array(img).reshape(-1, 3)
@@ -152,7 +174,7 @@ def test_firmware_compatibility(bmp_path):
         
         # 向量化检查
         valid_mask = np.zeros(total_pixels, dtype=bool)
-        for color in E6_COLORS.astype(np.uint8):
+        for color in colors.astype(np.uint8):
             valid_mask |= np.all(pixels == color, axis=1)
         
         incompatible_count = np.sum(~valid_mask)
@@ -263,7 +285,7 @@ def process_single_image(input_file, args, config):
         return False
     
     print(f'\n处理图像: {input_file}')
-    print(f'预设: {args.preset}, 抖动: {args.method}')
+    print(f'预设: {args.preset}, 抖动: {args.method}, 调色板: {args.palette.upper()}')
     
     try:
         # 打开并转换为RGB
@@ -288,8 +310,8 @@ def process_single_image(input_file, args, config):
         img = preprocess_image(img, config)
         img_array = np.array(img, dtype=np.uint8)
         
-        # 颜色优化
-        if config.get('optimize_colors', True):
+        # 颜色优化 - 默认关闭以保留细节
+        if config.get('optimize_colors', False):
             print('优化颜色...')
             img_array = optimize_colors(img_array)
         
@@ -297,16 +319,17 @@ def process_single_image(input_file, args, config):
         print(f'应用{args.method}量化...')
         
         # 选择量化方法
+        target_colors = E6_COLORS if args.palette == 'e6' else E7_COLORS
         quantize_func = {
-            'floyd': floyd_steinberg_dither,
-            'ordered': ordered_dither,
-            'none': simple_quantize
-        }.get(args.method, simple_quantize)
+            'floyd': lambda a: floyd_steinberg_dither(a, target_colors),
+            'ordered': lambda a: ordered_dither(a, target_colors),
+            'none': lambda a: simple_quantize(a, target_colors)
+        }.get(args.method, lambda a: simple_quantize(a, target_colors))
         
         quantized = quantize_func(img_array)
         
-        # 验证E6颜色（总是启用以确保固件兼容）
-        quantized = validate_e6_colors(quantized)
+        # 验证颜色（总是启用以确保固件兼容）
+        quantized = validate_colors(quantized, target_colors)
         
         if args.strict:
             print('  已应用严格固件兼容模式')
@@ -316,13 +339,16 @@ def process_single_image(input_file, args, config):
         
         # 创建调色板图像
         pal_img = Image.new('P', (1, 1))
-        pal_img.putpalette(create_e6_palette())
+        if args.palette == 'e6':
+            pal_img.putpalette(create_e6_palette())
+        else:
+            pal_img.putpalette(create_e7_palette())
         
-        # 量化到6色调色板
+        # 量化到目标调色板
         final_img = result_img.convert('RGB').quantize(palette=pal_img).convert('RGB')
         
         # 保存BMP文件（24位格式，固件要求）
-        output_file = os.path.splitext(input_file)[0] + f'_e6.bmp'
+        output_file = os.path.splitext(input_file)[0] + f'_{args.palette}.bmp'
         final_img.save(output_file, 'BMP')  # PIL会自动使用24位BMP格式
         
         # 保存RGB预览
@@ -337,7 +363,7 @@ def process_single_image(input_file, args, config):
         
         # 自动运行固件兼容性测试
         print('\n运行固件兼容性测试...')
-        test_firmware_compatibility(output_file)
+        test_firmware_compatibility(output_file, colors=target_colors)
         
         return True
         
@@ -370,6 +396,8 @@ parser.add_argument('--mode', choices=['fit', 'fill', 'stretch'],
                    default='fit', help='缩放模式')
 parser.add_argument('--no-dither', action='store_true', 
                    help='禁用抖动')
+parser.add_argument('--palette', choices=['e6', 'e7'],
+                   default='e6', help='目标显示调色板：E6(6色) 或 E7(7色)')
 parser.add_argument('--enhance', type=float, default=None, 
                    help='色彩增强系数 (1.0-2.0)')
 parser.add_argument('--contrast', type=float, default=None, 
@@ -392,7 +420,8 @@ if not os.path.exists(args.input_path):
 if args.test_only:
     if args.input_path.lower().endswith('.bmp'):
         print(f'测试BMP文件的固件兼容性: {args.input_path}')
-        is_compatible, _ = test_firmware_compatibility(args.input_path)
+        target_colors = E6_COLORS if args.palette == 'e6' else E7_COLORS
+        is_compatible, _ = test_firmware_compatibility(args.input_path, colors=target_colors)
         sys.exit(0 if is_compatible else 1)
     else:
         print('错误：--test-only 参数需要一个BMP文件路径')
@@ -408,7 +437,7 @@ presets = {
         'denoise': True,
         'auto_balance': True,
         'edge_enhance': False,
-        'optimize_colors': True
+        'optimize_colors': False
     },
     'art': {
         'color_enhance': 1.8,
@@ -418,7 +447,7 @@ presets = {
         'denoise': False,
         'auto_balance': True,
         'edge_enhance': False,
-        'optimize_colors': True
+        'optimize_colors': False
     },
     'text': {
         'color_enhance': 1.0,
@@ -438,7 +467,7 @@ presets = {
         'denoise': False,
         'auto_balance': False,
         'edge_enhance': False,
-        'optimize_colors': True
+        'optimize_colors': False
     }
 }
 

@@ -1,14 +1,14 @@
-# Image Converter for E-Ink E6 Display
+# Image Converter for E-Ink E6/E7 Displays
 
-A specialized image conversion tool designed for 6-color e-ink displays (E6), converting regular images into a limited color palette optimized for e-paper screens.
+A specialized image conversion tool designed for 6‑color (E6) and 7‑color (E7/7C) e‑ink displays, converting regular images into a limited color palette optimized for e‑paper screens.
 
-**Hardware Compatibility:** This tool is designed for use with the Waveshare PhotoPainter e-ink display hardware.
+**Hardware Compatibility:** This tool targets Waveshare PhotoPainter e‑ink display hardware. Both 6‑color (E6) and 7‑color (7C) firmware modes are supported.
 - [GitHub Repository](https://github.com/waveshareteam/PhotoPainter_B)
 - [Product Wiki](https://www.waveshare.net/wiki/PhotoPainter_(B))
 
 ## Features
 
-- **6-Color Palette Conversion**: Converts images to the E6 palette (Black, White, Yellow, Red, Blue, Green)
+- **E6/E7 Palette Conversion**: Converts images to E6 (Black, White, Yellow, Red, Blue, Green) or E7 (adds Orange)
 - **Multiple Dithering Algorithms**: Floyd-Steinberg, Ordered (Bayer), and None
 - **Content-Aware Presets**: Optimized settings for photos, artwork, text, and logos
 - **Flexible Display Modes**: Support for both 800x480 (landscape) and 480x800 (portrait) resolutions
@@ -42,6 +42,9 @@ python -m convnew.main image.jpg --method ordered
 
 # Specify orientation
 python -m convnew.main image.jpg --dir portrait
+
+# Use 7-color (E7) palette
+python -m convnew.main image.jpg --palette e7
 ```
 
 ### Command Line Options
@@ -52,6 +55,7 @@ python -m convnew.main image.jpg --dir portrait
 | `--method` | floyd, ordered, none | floyd | Dithering algorithm |
 | `--dir` | landscape, portrait, auto | auto | Display orientation |
 | `--mode` | scale, cut, fill, stretch | scale | Image fitting method |
+| `--palette` | e6, e7 | e6 | Target display palette (6 or 7 colors) |
 
 ## Presets Explained
 
@@ -93,7 +97,7 @@ Direct color quantization without dithering. Best for images with solid colors o
 ## Output Files
 
 The converter generates two files:
-- `*_e6.bmp`: 6-color BMP file ready for e-ink display
+- `*_e6.bmp` or `*_e7.bmp`: BMP file ready for e‑ink display (24‑bit RGB, pure palette colors)
 - `*_preview.png`: PNG preview for verification on regular screens
 
 ## Building Executable (Windows)
@@ -132,7 +136,7 @@ ConvNew/
 
 ## Color Palette
 
-The E6 e-ink display supports exactly 6 colors:
+The E6 e‑ink display supports exactly 6 colors, and the E7 variant adds Orange:
 
 | Color | RGB Values | Hex |
 |-------|------------|-----|
@@ -142,6 +146,12 @@ The E6 e-ink display supports exactly 6 colors:
 | Red | (255, 0, 0) | #FF0000 |
 | Blue | (0, 0, 255) | #0000FF |
 | Green | (0, 255, 0) | #00FF00 |
+
+E7 extra:
+
+| Color | RGB Values | Hex |
+|-------|------------|-----|
+| Orange | (255, 128, 0) | #FF8000 |
 
 ## Examples
 

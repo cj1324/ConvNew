@@ -1,0 +1,17 @@
+*.exe
+# Build artifacts
+dist/
+build/
+*.egg-info/
+__pycache__/
+.venv/
+
+# OS/editor noise
+Thumbs.db
+.DS_Store
+*.swp
+
+# Test outputs
+*_e6.bmp
+*_e7.bmp
+*_preview.png
